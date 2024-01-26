@@ -1,3 +1,4 @@
+//gcc -g -o ./cb avio_read_callback.c -lavformat -lavcodec -lavutil
 /*
  * Copyright (c) 2014 Stefano Sabatini
  *
@@ -38,6 +39,32 @@ struct buffer_data {
     size_t size; ///< size left in the buffer
 };
 
+void dumpBoxHex(int fOffset, const char* bxData, int sz, int lvl, int limit) {
+    if(sz > limit) sz = limit;
+    char humStr[256] = {0};
+    printf("0x%08X ", fOffset);
+    char sc[2] = {0};
+    for(int i = 0; i < sz; ++i) {
+        char c = bxData[i];
+        sc[0] = c;
+        if (c >= 0x20 && c <= 0x7E) strcat(humStr, sc);
+        else strcat(humStr, ".");
+
+        if(8 == i % 16) {
+            printf(" ");
+            strcat(humStr, " ");
+        }
+
+        printf("%02X ", c & 0xFF);
+        if(15 == i % 16) {
+            printf("|%s|\n0x%08X ", humStr, fOffset + i + 1);
+            memset(humStr, 0, sizeof(humStr));
+        }
+    }       
+    if(humStr[0]) printf("|%s|", humStr);
+    printf("\n");
+}
+
 static int read_packet(void *opaque, uint8_t *buf, int buf_size)
 {
     struct buffer_data *bd = (struct buffer_data *)opaque;
@@ -49,6 +76,9 @@ static int read_packet(void *opaque, uint8_t *buf, int buf_size)
 
     /* copy internal buffer data to buf */
     memcpy(buf, bd->ptr, buf_size);
+    static int gOffset = 0;
+    dumpBoxHex(gOffset, buf, buf_size, 0, 64);
+    gOffset += buf_size;
     bd->ptr  += buf_size;
     bd->size -= buf_size;
 
